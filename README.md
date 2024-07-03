@@ -257,6 +257,54 @@ fig.savefig("example05.png")
 
 ![example05.png](https://raw.githubusercontent.com/moshi4/pyCirclize/main/docs/images/example05.png)  
 
+## Features in development.
+
+- Adjust overlap label position
+
+```python
+from pycirclize import Circos
+
+sectors = {"A": 10, "B": 20, "C": 15}
+name2color = {"A": "red", "B": "blue", "C": "green"}
+circos = Circos(sectors, space=5)
+for sector in circos.sectors:
+    track = sector.add_track((95, 100))
+    track.axis(fc=name2color[sector.name])
+    track.text(sector.name, color="black", size=12)
+    track.xticks_by_interval(1)
+
+# Plot links with various styles
+circos.link(("A", 0, 1), ("A", 7, 8))
+circos.link(("A", 1, 2), ("A", 7, 6), color="skyblue")
+circos.link(("A", 9, 10), ("B", 4, 3), direction=1, color="tomato")
+circos.link(("B", 5, 7), ("C", 6, 8), direction=1, ec="black", lw=1, hatch="//")
+circos.link(("B", 18, 16), ("B", 11, 13), r1=90, r2=90, color="violet", ec="red", lw=2, ls="dashed")
+circos.link(("C", 1, 3), ("B", 2, 0), direction=1, color="limegreen")
+circos.link(("C", 11.5, 14), ("A", 4, 3), direction=2, color="chocolate", ec="black", lw=1, ls="dotted")
+
+circos.link_line(('A', 1.5), ('B', 2.5))
+
+# Plot genomic labels
+data_genomic_labels = [
+    ['A', 'label_A0', 0],
+    ['A', 'label_A1', 5.6],
+    ['A', 'label_A2', 5.5],
+    ['A', 'label_A3', 1.3],
+    ['B', 'label_B1', 6.5],
+    ['B', 'label_B2', 13.3],
+    ['B', 'label_B3', 5.5],
+    ['C', 'label_C1', 9.5],
+    ['C', 'label_C2', 9.6],
+]
+
+circos.plot_genomic_labels(data_genomic_labels, adjust_rotation=True, label_style={'size': 8, 'color': 'blue'})
+
+fig = circos.plotfig()
+
+```
+
+![example06](./static/example06.png "Add Genomic Labels")
+
 ## Not Implemented Features
 
 List of features implemented in other Circos plotting tools but not yet implemented in pyCirclize.
@@ -266,7 +314,7 @@ I may implement them when I feel like it.
 - Plot boxplot
 - Plot violin
 - Plot curved text
-- Adjust overlap label position
+
 
 ## Star History
 

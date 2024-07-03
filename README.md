@@ -303,7 +303,7 @@ fig = circos.plotfig()
 
 ```
 
-![example06](./static/example06.png "Add Genomic Labels")
+![example06](./example06.png "Add Genomic Labels")
 
 ## Not Implemented Features
 

@@ -34,6 +34,7 @@ from pycirclize.sector import Sector
 from pycirclize.track import Track
 from pycirclize.tree import TreeViz
 
+from adjustText import adjust_text
 
 class Circos:
     """Circos Visualization Class"""
@@ -739,6 +740,68 @@ class Circos:
 
         self._plot_funcs.append(plot_text)
 
+    def plot_genomic_label_and_link(
+        self,
+        text: str,
+        r1: float = 0,
+        r2: float = 0,
+        rad1: float = 0,
+        rad2: float = 0,
+        *,
+        link_r1: float = 100,
+        link_r2: float = 120,
+        adjust_rotation: bool = True,
+        orientation: str = "vertical",
+        link_color='gray',
+        link_marker=',',
+        link_style='-',
+        link_width=0.5,
+        **label_args,
+    ) -> None:
+        """Plot label text
+
+        Parameters
+        ----------
+        text : str
+            Text content
+        r : float
+            Radius position
+        rad : float
+            Radian position (0 - 2π)
+        adjust_rotation : bool, optional
+            If True, text rotation is auto set based on `deg` param.
+        orientation : str, optional
+            Text orientation (`horizontal` or `vertical`)
+            If adjust_rotation=True, orientation is used for rotation calculation.
+        **kwargs : dict, optional
+            Text properties (e.g. `size=12, color="red", rotation=90, ...`)
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html>
+        """
+        if "va" not in label_args and "verticalalignment" not in label_args:
+            label_args.update(dict(va="center"))
+        if "ha" not in label_args and "horizontalalignment" not in label_args:
+            label_args.update(dict(ha="center"))
+        if adjust_rotation:
+            params = utils.plot.get_label_params_by_rad(rad2, orientation)
+            label_args.update(**params)
+
+        def plot_label(ax: PolarAxes) -> None:
+            ax.text(rad2, r2, text, **label_args)
+
+        def plot_link(ax: PolarAxes) -> None:
+            ax.set_rlim(0, max(r1, r2, link_r1, link_r2))
+            ax.plot(
+                [rad1, rad2],
+                [link_r1, link_r2],
+                lw=link_width,
+                color=link_color,
+                marker=link_marker,
+                ls=link_style,
+                )
+
+        self._plot_funcs.append(plot_label)
+        self._plot_funcs.append(plot_link)
+
     def line(
         self,
         *,
@@ -945,6 +1008,149 @@ class Circos:
             **kwargs,
         )
         self._patches.append(bezier_curve_line)
+
+    def genomic_labels(
+        self,
+        chrosome_name: str,
+        labels_pos: dict[str, float],
+        r: float = 115,
+        *,
+        link_r1: float = 100,
+        link_r2: float = 120,
+        **kwargs,
+    ) -> None:
+        """Add labels to specified position on sectors.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        # Set data for plot label
+        label_names = list(labels_pos.keys())
+        sector = self.get_sector(chrosome_name)
+        for label_name in label_names:
+            r1 = r
+            r2 = r1  #TODO 此处变为调整后的rad
+            rad1 = sector.x_to_rad(labels_pos[label_name])
+            rad2 = rad1  #TODO 此处变为调整后的rad
+            self.plot_genomic_label_and_link(
+                label_name,
+                r1=r1,
+                r2=r2,
+                rad1=rad1,
+                rad2=rad2,
+                link_r1=link_r1,
+                link_r2=link_r2,
+                **kwargs
+            )
+
+    data_adjust_text = []
+
+    def adjusted_plot_labels(
+        self,
+        labels_info: list = None,
+        r: float = 110,
+        link_r1: float = 100,
+        link_r2: float = 120,
+    ) -> None:
+        adjusted_labels_info = []
+        def adjust_labels_position(ax: PolarAxes) -> None:
+            for label_info in labels_info:
+                adjusted_label = ax.text(
+                    x=label_info[2],
+                    y=label_info[3],
+                    s=label_info[1],
+                    **label_info[4]
+                )
+                adjusted_labels_info.append(adjusted_label)
+            # print(adjusted_labels_info)
+            # adjust_text(adjusted_labels_info,
+            #             avoid_self=False,
+            #             only_move= {
+            #                 'text': ('x', 'y+'),
+            #                 "static": ('x', 'y+'),
+            #                 "explode": ('x', 'y+'),
+            #                 "pull": ('x', 'y+'),
+            #                 },
+            #             ax=ax,
+            #         )
+        self._plot_funcs.append(adjust_labels_position)
+
+        def plot_link(ax: PolarAxes) -> None:
+            r1 = r
+            r2 = r1  #TODO 此处变为调整后的rad 
+            ax.set_rlim(0, max(r1, r2, link_r1, link_r2))
+            for label_info in labels_info:
+                ax.plot(
+                    [label_info[2], label_info[2]],
+                    [link_r1, link_r2],
+                    # lw=link_width,
+                    color=label_info[-1]['color'],
+                    # marker=link_marker,
+                    # ls=link_style,
+                    )
+
+        self._plot_funcs.append(plot_link)
+
+    def plot_genomic_labels(
+        self,
+        data_genomic_labels: list[list],
+        *,
+        r: float = 110,
+        adjust_rotation: bool = False,
+        label_style: dict[str, dict[str, str]] = None,
+        link_r1: float = 100,
+        link_r2: float = 110,
+        link_style: dict[str, dict[str, str]] = None,
+    ) -> None:
+        """Add labels to specified position on sectors.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        # Parse data for plot labels
+        def parse_genomic_labels(data_genomic_labels, r=r, label_style=label_style, link_style=link_style) -> list:
+            parsed_genomic_labels = []
+            if not label_style:
+                label_style = {}
+            if not link_style:
+                link_style = {}
+            link_style_params = {'color': 'gray'}
+            link_style.update(**link_style_params)
+            if adjust_rotation:
+                for row in data_genomic_labels:
+                    rad = self.get_sector(row[0]).x_to_rad(row[2])
+                    label_style_params = utils.plot.get_label_params_by_rad(rad, 'vertical')
+                    label_style.update(**label_style_params)
+                    parsed_genomic_labels.append(
+                        [row[0], row[1], rad, r, label_style.copy(), link_style.copy()]
+                        )
+            else:
+                for row in data_genomic_labels:
+                    rad = self.get_sector(row[0]).x_to_rad(row[2])
+                    parsed_genomic_labels.append(
+                        [row[0], row[1], rad, r, label_style.copy(), link_style.copy()]
+                        )
+
+            return parsed_genomic_labels
+
+        parsed_genomic_labels = parse_genomic_labels(data_genomic_labels)
+        # for i in parsed_genomic_labels:
+        #     print(i)
+        # Adjust position using adjustText library
+        self.adjusted_plot_labels(
+            labels_info=parsed_genomic_labels,
+            r=r,
+            link_r1=link_r1,
+            link_r2=link_r2,
+            )
 
     def colorbar(
         self,
